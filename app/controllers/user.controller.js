@@ -1,112 +1,140 @@
-const User = require("../models/user.model")
+const User = require("../models/user.model");
 const bcrypt = require("bcryptjs");
 
-const validUsername = (req, res) => {
-    User.checkUsername(req.params.us, (err, data)=>{
-        if(err) {
-            if(err.kind == "not_found"){
-                res.send({
-                    message: "Not Found: " + req.params.us,
-                    valid: true
-                });
+// Validate username
+exports.validUsername = (req, res) => {
+    User.checkUsername(req.params.us, (err, data) => {
+        if (err) {
+            if (err.kind === "not_found") {
+                res.send({ message: "Not Found: " + req.params.us, valid: true });
+            } else {
+                res.status(500).send({ message: "Error querying username: " + req.params.us });
             }
-            else {
-                res.status(500).send({ 
-                    message: "Error query: " + req.params.us
-                });
-            }
-        }else{
-            res.send({record: data, valid: false});
+        } else {
+            res.send({ record: data, valid: false });
         }
     });
 };
 
-const createNewUser = (req, res)=>{
-    if(!req.body){
-        res.status(400).send({message: "Content can not be empty."});
+// Create a new user
+exports.createNewUser = (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ message: "Content cannot be empty." });
     }
     const salt = bcrypt.genSaltSync(10);
-    const userObj = new User({
+    const newUser = new User({
         fullname: req.body.fullname,
-        email: req.body.email,
-        username: req.body.username,
+        user_name: req.body.user_name,
+        role: req.body.role,
         password: bcrypt.hashSync(req.body.password, salt),
-        img: req.body.img
+        img: req.body.img,
     });
-    User.create(userObj, (err, data)=>{
-        if(err){
-            res.status(500).send({message: err.message || "Some error occured while creating"});
-        }else res.send(data);
+
+    User.create(newUser, (err, data) => {
+        if (err) {
+            res.status(500).send({ message: err.message || "Error occurred while creating the user." });
+        } else {
+            res.send(data);
+        }
     });
 };
 
-const login = (req, res)=>{
-    if(!req.body){
-        res.status(400).send({message: "Content can not be empty."});
+// Login user
+exports.login = (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ message: "Content cannot be empty." });
     }
-    const acc = new User({
-        username: req.body.username,
-        password: req.body.password
+
+    const loginCredentials = new User({
+        user_name: req.body.user_name,
+        password: req.body.password,
     });
-    User.loginModel(acc, (err, data)=>{
-        if(err){
-            if(err.kind == "not_found"){
-                res.status(401).send({message: "Not found " + req.body.username});
+
+    User.loginModel(loginCredentials, (err, data) => {
+        if (err) {
+            if (err.kind === "not_found") {
+                res.status(401).send({ message: "User not found: " + req.body.user_name });
+            } else if (err.kind === "invalid_pass") {
+                res.status(401).send({ message: "Invalid Password" });
+            } else {
+                res.status(500).send({ message: "Error occurred during login." });
             }
-            else if(err.kind == "invalid_pass"){
-                res.status(401).send({message: "Invalid Password"});
-            }else{
-                res.status(500).send({message: "Query error." });
-            }
-        }else res.send(data);
+        } else {
+            res.send(data);
+        }
     });
 };
 
-const getAllUsers = (req,res)=>{
-    User.getAllRecords((err, data)=>{
-        if(err){
-            res.status(500).send({message: err.message || "Some error ocurred."});
-        }else res.send(data);
+// Get all users
+exports.getAllUsers = (req, res) => {
+    User.getAllRecords((err, data) => {
+        if (err) {
+            res.status(500).send({ message: err.message || "Error occurred while retrieving users." });
+        } else {
+            res.send(data);
+        }
     });
 };
 
 // Update user
-const updateUser = (req, res) => {
-    if(!req.body){
-        res.status(400).send({message: "Content can not be empty."});
+exports.updateUser = (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ message: "Content cannot be empty." });
     }
+
     const userId = req.params.id;
     const salt = bcrypt.genSaltSync(10);
-    const userObj = new User({
+    const updatedUser = new User({
         fullname: req.body.fullname,
-        email: req.body.email,
-        username: req.body.username,
+        user_name: req.body.user_name,
+        role: req.body.role,
         password: bcrypt.hashSync(req.body.password, salt),
-        img: req.body.img
+        img: req.body.img,
     });
-    User.updateById(userId, userObj, (err, data) => {
-        if(err){
-            if(err.kind == "not_found"){
-                res.status(404).send({message: `Not found User with id ${userId}.`});
+
+    User.updateById(userId, updatedUser, (err, data) => {
+        if (err) {
+            if (err.kind === "not_found") {
+                res.status(404).send({ message: `User not found with id ${userId}.` });
             } else {
-                res.status(500).send({message: "Error updating User with id " + userId});
+                res.status(500).send({ message: `Error updating User with id ${userId}` });
             }
-        } else res.send(data);
+        } else {
+            res.send(data);
+        }
     });
 };
 
 // Delete user
-const deleteUser = (req, res) => {
+exports.deleteUser = (req, res) => {
     const userId = req.params.id;
+
     User.remove(userId, (err, data) => {
-        if(err){
-            if(err.kind == "not_found"){
-                res.status(404).send({message: `Not found User with id ${userId}.`});
+        if (err) {
+            if (err.kind === "not_found") {
+                res.status(404).send({ message: `User not found with id ${userId}.` });
             } else {
-                res.status(500).send({message: "Could not delete User with id " + userId});
+                res.status(500).send({ message: `Could not delete User with id ${userId}` });
             }
-        } else res.send({message: `User was deleted successfully!`});
+        } else {
+            res.send({ message: `User deleted successfully!` });
+        }
     });
 };
 
-module.exports = { validUsername, createNewUser, login, getAllUsers, updateUser, deleteUser };
+// Get users by role
+exports.getUsersByRole = (req, res) => {
+    const role = req.params.role; // Extract the role from the URL parameter
+    if (!role) {
+        res.status(400).send({ message: "Role is required." });
+        return;
+    }
+
+    User.getUsersByRole(role, (err, data) => {
+        if (err) {
+            res.status(500).send({ message: err.message || "Error retrieving users by role." });
+        } else {
+            res.send(data);
+        }
+    });
+};

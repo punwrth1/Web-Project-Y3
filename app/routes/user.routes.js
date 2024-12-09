@@ -1,19 +1,28 @@
-const authJwt = require("../middleware/auth.jwt");
-const User = require("../models/user.model");
-const user_controller = require("../controllers/user.controller");
+const userController = require("../controllers/user.controller");
 const express = require("express");
-var router = express.Router();
+const router = express.Router();
 
-router.get("/:us", user_controller.validUsername);
-router.post("/signup", user_controller.createNewUser);
-router.post("/login", user_controller.login);
-router.get("/", user_controller.getAllUsers);  
+// Validate username
+router.get("/:us", userController.validUsername);
 
-// Authentication required for these routes
-router.put("/:id", authJwt.verifyToken, user_controller.updateUser);
-router.delete("/:id", authJwt.verifyToken, user_controller.deleteUser);
+// Create a new user
+router.post("/signup", userController.createNewUser);
 
+// Login user
+router.post("/login", userController.login);
 
-module.exports = app => {
-    app.use("/api/auth", router);
+// Get all users
+router.get("/", userController.getAllUsers);
+
+// Get users by role
+router.get("/role/:role", userController.getUsersByRole);
+
+// Update user
+router.put("/:id", userController.updateUser);
+
+// Delete user
+router.delete("/:id", userController.deleteUser);
+
+module.exports = (app) => {
+    app.use("/api/users", router); // Attach this router under `/api/users`
 };

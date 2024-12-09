@@ -1,118 +1,127 @@
 const sql = require("./db");
 const jwt = require("jsonwebtoken");
 const scKey = require("../config/jwt.config");
-const bcrypt = require("bcryptjs/dist/bcrypt");
-const expireTime = "2h"; 
+const bcrypt = require("bcryptjs");
 
-const User = function(user){
+const User = function (user) {
     this.fullname = user.fullname;
-    this.email = user.email;
-    this.username = user.username;
+    this.user_name = user.user_name;
+    this.role = user.role;
     this.password = user.password;
     this.img = user.img;
-}
-User.checkUsername = (username, result)=>{
-    sql.query("SELECT * FROM users WHERE username='"+username+"'",(err,res)=>{
-        if(err){
+};
+
+// Check if a username exists
+User.checkUsername = (user_name, result) => {
+    sql.query("SELECT * FROM users WHERE user_name = ?", [user_name], (err, res) => {
+        if (err) {
             console.log("Error: " + err);
             result(err, null);
             return;
         }
-        if(res.length){
-            console.log("Found username: " + res[0]);
+        if (res.length) {
+            console.log("Found username: ", res[0]);
             result(null, res[0]);
-            return;
+        } else {
+            result({ kind: "not_found" }, null);
         }
-        result({ kind: "not_found"}, null);
     });
 };
 
-User.create = (newUser, result)=>{
-    sql.query("INSERT INTO users SET ?", newUser, (err, res)=>{
-        if(err){
-            console.log("Query error: " + err);
+// Create a new user
+User.create = (newUser, result) => {
+    sql.query("INSERT INTO users SET ?", newUser, (err, res) => {
+        if (err) {
+            console.log("Error: ", err);
             result(err, null);
             return;
         }
-        const token = jwt.sign({id: res.insertId}, scKey.secret, {expiresIn: expireTime});
-        result(null, {id: res.insertId, ...newUser, accessToken: token});
-        console.log("Created user:", {id: res.insertId, ...newUser, accessToken: token});
+        const token = jwt.sign({ id: res.insertId }, scKey.secret, { expiresIn: "2h" });
+        result(null, { id: res.insertId, ...newUser, accessToken: token });
     });
 };
 
-User.loginModel = (account, result)=>{
-    sql.query("SELECT * FROM users WHERE username=?", [account.username], (err, res)=>{
-        if(err){
-            console.log("err:" + err);
+// User login
+User.loginModel = (account, result) => {
+    sql.query("SELECT * FROM users WHERE user_name = ?", [account.user_name], (err, res) => {
+        if (err) {
+            console.log("Error: ", err);
             result(err, null);
             return;
         }
-        if(res.length){
+        if (res.length) {
             const validPassword = bcrypt.compareSync(account.password, res[0].password);
-            if(validPassword){
-                const token = jwt.sign({id: res.insertId}, scKey.secret, {expiresIn: expireTime});
-                console.log("Login success. Token: " + token);
+            if (validPassword) {
+                const token = jwt.sign({ id: res[0].user_id }, scKey.secret, { expiresIn: "2h" });
                 res[0].accessToken = token;
                 result(null, res[0]);
-                return;
-            }else{
-                console.log("Password not match");
-                result({kind: "invalid_pass"}, null);
+            } else {
+                result({ kind: "invalid_pass" }, null);
+            }
+        } else {
+            result({ kind: "not_found" }, null);
+        }
+    });
+};
+
+// Get all users
+User.getAllRecords = (result) => {
+    sql.query("SELECT * FROM users", (err, res) => {
+        if (err) {
+            console.log("Error: ", err);
+            result(err, null);
+            return;
+        }
+        result(null, res);
+    });
+};
+
+// Update user
+User.updateById = (userId, user, result) => {
+    sql.query(
+        "UPDATE users SET fullname = ?, user_name = ?, role = ?, password = ?, img = ? WHERE user_id = ?",
+        [user.fullname, user.user_name, user.role, user.password, user.img, userId],
+        (err, res) => {
+            if (err) {
+                console.log("Error: ", err);
+                result(err, null);
                 return;
             }
+            if (res.affectedRows === 0) {
+                result({ kind: "not_found" }, null);
+            } else {
+                result(null, { id: userId, ...user });
+            }
         }
-        result({kind: "not_found"}, null);
-    });
+    );
 };
 
-User.getAllRecords = (result)=>{
-    sql.query("SELECT * FROM users", (err, res)=>{
-        if(err){
-            console.log("Query err: " + err);
-            result(err,null);
-            return;
-        }
-        result(null, res);
-    });
-};
-
-// Update user by ID
-User.updateById = (userId, user, result) => {
-    sql.query("UPDATE users SET fullname = ?, email = ?, username = ?, password = ?, img = ? WHERE id = ?", 
-    [user.fullname, user.email, user.username, user.password, user.img, userId], 
-    (err, res) => {
-        if(err){
-            console.log("Error: ", err);
-            result(null, err);
-            return;
-        }
-        if(res.affectedRows == 0){
-            // No user found with the ID
-            result({ kind: "not_found" }, null);
-            return;
-        }
-        console.log("Updated user: ", { id: userId, ...user });
-        result(null, { id: userId, ...user });
-    });
-};
-
-// Delete user by ID
+// Delete user
 User.remove = (userId, result) => {
-    sql.query("DELETE FROM users WHERE id = ?", userId, (err, res) => {
-        if(err){
+    sql.query("DELETE FROM users WHERE user_id = ?", [userId], (err, res) => {
+        if (err) {
             console.log("Error: ", err);
             result(null, err);
             return;
         }
-        if(res.affectedRows == 0){
-            // No user found with the ID
+        if (res.affectedRows === 0) {
             result({ kind: "not_found" }, null);
-            return;
+        } else {
+            result(null, res);
         }
-        console.log("Deleted user with id: ", userId);
-        result(null, res);
     });
 };
 
+// Get users by role
+User.getUsersByRole = (role, result) => {
+    sql.query("SELECT * FROM users WHERE role = ?", [role], (err, res) => {
+        if (err) {
+            console.log("Error: ", err);
+            result(err, null);
+            return;
+        }
+        result(null, res);
+    });
+};
 
 module.exports = User;
