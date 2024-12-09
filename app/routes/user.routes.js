@@ -24,5 +24,5 @@ router.put("/:id", userController.updateUser);
 router.delete("/:id", userController.deleteUser);
 
 module.exports = (app) => {
-    app.use("/api/users", router); // Attach this router under `/api/users`
+    app.use("/api/users", router);
 };

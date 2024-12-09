@@ -21,6 +21,7 @@ exports.createNewUser = (req, res) => {
     if (!req.body) {
         return res.status(400).send({ message: "Content cannot be empty." });
     }
+
     const salt = bcrypt.genSaltSync(10);
     const newUser = new User({
         fullname: req.body.fullname,
@@ -42,28 +43,30 @@ exports.createNewUser = (req, res) => {
 // Login user
 exports.login = (req, res) => {
     if (!req.body) {
-        return res.status(400).send({ message: "Content cannot be empty." });
+      return res.status(400).send({ message: "Content cannot be empty." });
     }
-
-    const loginCredentials = new User({
-        user_name: req.body.user_name,
-        password: req.body.password,
-    });
-
+  
+    const loginCredentials = {
+      user_name: req.body.user_name,
+      password: req.body.password,
+    };
+  
     User.loginModel(loginCredentials, (err, data) => {
-        if (err) {
-            if (err.kind === "not_found") {
-                res.status(401).send({ message: "User not found: " + req.body.user_name });
-            } else if (err.kind === "invalid_pass") {
-                res.status(401).send({ message: "Invalid Password" });
-            } else {
-                res.status(500).send({ message: "Error occurred during login." });
-            }
+      if (err) {
+        if (err.kind === "not_found") {
+          res.status(401).send({ message: "User not found: " + req.body.user_name });
+        } else if (err.kind === "invalid_password") {
+          res.status(401).send({ message: "Invalid Password" });
         } else {
-            res.send(data);
+          res.status(500).send({ message: "Error occurred during login." });
         }
+      } else {
+        // Ensure the `user_id` is being sent in the response
+        res.send({ id: data.user_id, user_name: data.user_name, role: data.role });
+      }
     });
-};
+  };
+  
 
 // Get all users
 exports.getAllUsers = (req, res) => {
@@ -124,7 +127,7 @@ exports.deleteUser = (req, res) => {
 
 // Get users by role
 exports.getUsersByRole = (req, res) => {
-    const role = req.params.role; // Extract the role from the URL parameter
+    const role = req.params.role; 
     if (!role) {
         res.status(400).send({ message: "Role is required." });
         return;

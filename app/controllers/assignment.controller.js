@@ -45,6 +45,18 @@ exports.getAllAssignments = (req, res) => {
   });
 };
 
+// Retrieve assignments for a specific user
+exports.getAssignmentsByUser = (req, res) => {
+  const userId = req.params.userId;
+  Assignment.getByUserId(userId, (err, data) => {
+    if (err) {
+      res.status(500).send({ message: err.message || "Error occurred while retrieving assignments for the user." });
+    } else {
+      res.send(data);
+    }
+  });
+};
+
 // Retrieve a single assignment by ID
 exports.getAssignmentById = (req, res) => {
   Assignment.findById(req.params.assignmentId, (err, data) => {
@@ -94,3 +106,23 @@ exports.deleteAssignment = (req, res) => {
     }
   });
 };
+
+exports.getAssignmentsByUserId = (req, res) => {
+    const userId = req.params.userId;
+    if (!userId) {
+      res.status(400).send({ message: "User ID is required." });
+      return;
+    }
+    Assignment.findByUserId(userId, (err, data) => {
+      if (err) {
+        if (err.kind === "not_found") {
+          res.status(404).send({ message: `No assignments found for user ID ${userId}.` });
+        } else {
+          res.status(500).send({ message: "Error retrieving assignments for user ID " + userId });
+        }
+      } else {
+        res.send(data);
+      }
+    });
+  };
+  

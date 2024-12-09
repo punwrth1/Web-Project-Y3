@@ -21,7 +21,7 @@ app.get("/", (req, res) => {
 require("./app/routes/user.routes")(app);
 require("./app/routes/file.routes")(app);
 require("./app/routes/admin.routes")(app);
-require("./app/routes/record.routes")(app);
+require("./app/routes/wasteRecords.routes")(app);
 // require('./app/routes/building.routes.js')(app);
 require('./app/routes/floor.routes')(app);
 require('./app/routes/assignment.routes')(app);

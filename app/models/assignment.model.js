@@ -42,6 +42,47 @@ Assignment.createBulk = (assignments, result) => {
   );
 };
 
+// Retrieve assignments for a specific user
+Assignment.getByUserId = (userId, result) => {
+  sql.query(
+    `SELECT a.id AS assignment_id, 
+            bf.building_name, 
+            bf.floor_number, 
+            a.status, 
+            a.assigned_date
+     FROM assignmentsss a
+     INNER JOIN buildings_floors bf ON a.building_floor_id = bf.id
+     WHERE a.user_id = ?`,
+    [userId],
+    (err, res) => {
+      if (err) {
+        console.error("Error fetching assignments: ", err);
+        result(err, null);
+        return;
+      }
+      result(null, res);
+    }
+  );
+};
+
+// Retrieve all assignments
+Assignment.getAll = (result) => {
+  sql.query(
+    `SELECT a.id, bf.building_name, bf.floor_number, u.fullname AS user_name, a.status, a.assigned_date 
+     FROM assignmentsss a 
+     INNER JOIN buildings_floors bf ON a.building_floor_id = bf.id 
+     INNER JOIN users u ON a.user_id = u.user_id`,
+    (err, res) => {
+      if (err) {
+        console.error("Error: ", err);
+        result(err, null);
+        return;
+      }
+      result(null, res);
+    }
+  );
+};
+
 // Retrieve a single assignment by ID
 Assignment.findById = (assignmentId, result) => {
   sql.query("SELECT * FROM assignmentsss WHERE id = ?", [assignmentId], (err, res) => {
@@ -56,24 +97,6 @@ Assignment.findById = (assignmentId, result) => {
       result({ kind: "not_found" }, null);
     }
   });
-};
-
-// Retrieve all assignments
-Assignment.getAll = (result) => {
-  sql.query(
-    `SELECT a.id, bf.building_name, bf.floor_number, u.fullname AS user_name, a.status, a.assigned_date 
-        FROM assignmentsss a 
-        INNER JOIN buildings_floors bf ON a.building_floor_id = bf.id 
-        INNER JOIN users u ON a.user_id = u.user_id`,
-    (err, res) => {
-      if (err) {
-        console.error("Error: ", err);
-        result(err, null);
-        return;
-      }
-      result(null, res);
-    }
-  );
 };
 
 // Update an assignment by ID
@@ -112,4 +135,27 @@ Assignment.remove = (id, result) => {
   });
 };
 
+Assignment.findByUserId = (userId, result) => {
+    sql.query(
+      `SELECT a.id AS assignment_id, bf.building_name, bf.floor_number, a.status, a.assigned_date
+       FROM assignmentsss a
+       INNER JOIN buildings_floors bf ON a.building_floor_id = bf.id
+       WHERE a.user_id = ?`,
+      [userId],
+      (err, res) => {
+        if (err) {
+          console.error("Error: ", err);
+          result(err, null);
+          return;
+        }
+        if (res.length) {
+          result(null, res);
+        } else {
+          result({ kind: "not_found" }, null);
+        }
+      }
+    );
+  };
+  
+  
 module.exports = Assignment;
